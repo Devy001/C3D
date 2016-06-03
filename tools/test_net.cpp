@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
   for (int i = 0; i < total_iter; ++i) {
     const vector<Blob<float>*>& result = caffe_test_net.ForwardPrefilled();
     test_accuracy += result[0]->cpu_data()[0];
-    LOG(ERROR) << "Batch " << i << ", accuracy: " << result[0]->cpu_data()[0];
+    LOG(ERROR) << "Batch " << i << ", accuracy: " << result[0]->cpu_data()[0] << ", ave-accuracy: " << test_accuracy / (i+1);
   }
   test_accuracy /= total_iter;
   LOG(ERROR) << "Test accuracy: " << test_accuracy;

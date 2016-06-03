@@ -9,6 +9,7 @@
 #include "caffe/vision_layers.hpp"
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/convolution3d_layer.hpp"
+#include "caffe/ex_layers/biconvolution3d_layer.hpp"
 #include "caffe/pool3d_layer.hpp"
 #include "caffe/volume_data_layer.hpp"
 #include "caffe/video_data_layer.hpp"
@@ -87,6 +88,8 @@ Layer<Dtype>* GetLayer(const LayerParameter& param) {
     return new WindowDataLayer<Dtype>(param);
   case LayerParameter_LayerType_CONVOLUTION3D:
 	return new Convolution3DLayer<Dtype>(param);
+  case LayerParameter_LayerType_BICONVOLUTION3D:
+	return new BiConvolution3DLayer<Dtype>(param);
   case LayerParameter_LayerType_POOLING3D:
 	return new Pooling3DLayer<Dtype>(param);
   case LayerParameter_LayerType_VOLUME_DATA:

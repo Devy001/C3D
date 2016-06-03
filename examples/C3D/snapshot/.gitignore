@@ -1,0 +1,6 @@
+caffe.*
+*INFO*
+*ERROR*
+*WARNING*
+*.caffemodel
+*.solverstate

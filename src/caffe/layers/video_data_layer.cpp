@@ -278,10 +278,12 @@ void VideoDataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
 
   // Read the file with filenames and labels
   const string& source = this->layer_param_.image_data_param().source();
+  const string& root_dir = this->layer_param_.image_data_param().root_dir();
   const bool use_temporal_jitter = this->layer_param_.image_data_param().use_temporal_jitter();
   const bool use_image = this->layer_param_.image_data_param().use_image();
   LOG(INFO) << "Opening file " << source;
   std::ifstream infile(source.c_str());
+  CHECK(infile.good()) << "Fail load " << source.c_str();
   int count = 0;
   string filename;
   int start_frm, label;
@@ -289,20 +291,21 @@ void VideoDataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
 
   if ((!use_image) && use_temporal_jitter){
 	  while (infile >> filename >> label) {
-		  file_list_.push_back(filename);
+		  file_list_.push_back(root_dir + filename);
 		  label_list_.push_back(label);
 		  shuffle_index_.push_back(count);
 		  count++;
 	  }
   } else {
 	  while (infile >> filename >> start_frm >> label) {
-		  file_list_.push_back(filename);
+		  file_list_.push_back(root_dir + filename);
 		  start_frm_list_.push_back(start_frm);
 		  label_list_.push_back(label);
 		  shuffle_index_.push_back(count);
 		  count++;
 	  }
   }
+  infile.close();
 
   if (count==0){
 	  LOG(INFO) << "failed to read chunk list" << std::endl;

@@ -166,6 +166,7 @@ message LayerParameter {
     POOLING3D = 31;
     VOLUME_DATA = 32;
     VIDEO_DATA = 33;
+    BICONVOLUTION3D = 34;
   }
   optional LayerType type = 5; // the layer type from the enum above
 
@@ -308,6 +309,7 @@ message ImageDataParameter {
   optional bool use_label = 15 [default = true];
   optional bool use_temporal_jitter = 16 [default = false];
   optional float mean_value = 17 [default = 0];  
+  optional string root_dir = 18 [default = ""];
 }
 
 

@@ -188,11 +188,13 @@ bool ReadImageSequenceToVolumeDatum(const char* img_dir, const int start_frm, co
 	offset = 0;
 	int end_frm = start_frm + length * sampling_rate;
 	for (int i=start_frm; i<end_frm; i+=sampling_rate){
-		sprintf(fn_im, "%s/%06d.jpg", img_dir, i);
+		sprintf(fn_im, "%s/image_%04d.jpg", img_dir, i);
 		if (height > 0 && width > 0) {
 		    img_origin = cv::imread(fn_im, CV_LOAD_IMAGE_COLOR);
-		    if (!img_origin.data)
+		    if (!img_origin.data) {
+                LOG(ERROR) << "Fail : " << fn_im;
 		    	return false;
+            }
 		    cv::resize(img_origin, img, cv::Size(width, height));
 		    img_origin.release();
 		} else {
@@ -200,6 +202,7 @@ bool ReadImageSequenceToVolumeDatum(const char* img_dir, const int start_frm, co
 		}
 
 		if (!img.data){
+            LOG(ERROR) << "Fail : " << fn_im;
 			LOG(ERROR) << "Could not open or find file " << fn_im;
 			return false;
 		}

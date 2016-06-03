@@ -11,6 +11,7 @@
 #include "caffe/solver.hpp"
 #include "caffe/util/io.hpp"
 #include "caffe/util/math_functions.hpp"
+#include "caffe/util/benchmark.hpp"
 
 using std::max;
 using std::min;
@@ -78,13 +79,31 @@ void Solver<Dtype>::Solve(const char* resume_file) {
   // For a network that is trained by the solver, no bottom or top vecs
   // should be given, and we will just provide dummy vecs.
   vector<Blob<Dtype>*> bottom_vec;
+  caffe::Timer time_for_count;
+  time_for_count.Start();
   while (iter_++ < param_.max_iter()) {
     Dtype loss = net_->ForwardBackward(bottom_vec);
     ComputeUpdateValue();
     net_->Update();
 
     if (param_.display() && iter_ % param_.display() == 0) {
-      LOG(INFO) << "Iteration " << iter_ << ", loss = " << loss;
+      LOG(INFO) << "Iteration " << iter_ << " / " << param_.max_iter() << ", loss = " << loss;
+      if ( iter_ > 0 ){
+          float average_time = time_for_count.MilliSeconds() / param_.display() / 1000;
+          float remaining_time = average_time * (param_.max_iter() - iter_);
+          int remaining_hour = floor(remaining_time / 3600);
+          int remaining_min = round(remaining_time / 60 - remaining_hour * 60);
+               
+          LOG(INFO) << "Speed: "
+                    << average_time
+                    << " s / iter."
+                    << "  "
+                    << remaining_hour
+                    << ":"
+                    << remaining_min
+                    << " (Hours:Mins) to go.";
+        }
+        time_for_count.Start();
     }
     if (param_.test_interval() && iter_ % param_.test_interval() == 0) {
       Test();
