@@ -8,5 +8,4 @@ fi
 
 GLOG_logtostderr=1 ../../build/tools/test_net.bin \
     c3d_test.proto \
-    snapshot/c3d_ucf101_finetune_whole_iter_5000 836 GPU 6
-#    c3d_ucf101_final.caffemodel 836 GPU $gpu
+    c3d_ucf101_final.caffemodel 836 GPU 6

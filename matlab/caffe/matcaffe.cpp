@@ -70,11 +70,13 @@ static mxArray* do_forward(const mxArray* const bottom) {
   for (unsigned int i = 0; i < output_blobs.size(); ++i) {
     // internally data is stored as (width, height, channels, num)
     // where width is the fastest dimension
-    mwSize dims[4] = {output_blobs[i]->width(), output_blobs[i]->height(),
-      output_blobs[i]->channels(), output_blobs[i]->num()};
-    mxArray* mx_blob =  mxCreateNumericArray(4, dims, mxSINGLE_CLASS, mxREAL);
+    mwSize dims[5] = {output_blobs[i]->width(), output_blobs[i]->height(),
+      output_blobs[i]->length(), output_blobs[i]->channels(), output_blobs[i]->num()};
+    mxArray* mx_blob =  mxCreateNumericArray(5, dims, mxSINGLE_CLASS, mxREAL);
     mxSetCell(mx_out, i, mx_blob);
     float* data_ptr = reinterpret_cast<float*>(mxGetPr(mx_blob));
+    const int count = output_blobs[i]->width() * output_blobs[i]->height() * output_blobs[i]->length() * output_blobs[i]->channels() * output_blobs[i]->num();
+    CHECK_EQ(count, output_blobs[i]->count());
     switch (Caffe::mode()) {
     case Caffe::CPU:
       memcpy(data_ptr, output_blobs[i]->cpu_data(),
@@ -120,13 +122,15 @@ static mxArray* do_backward(const mxArray* const top_diff) {
   // LOG(INFO) << "End";
   mxArray* mx_out = mxCreateCellMatrix(input_blobs.size(), 1);
   for (unsigned int i = 0; i < input_blobs.size(); ++i) {
-    // internally data is stored as (width, height, channels, num)
+    // internally data is stored as (width, height, length, channels, num)
     // where width is the fastest dimension
-    mwSize dims[4] = {input_blobs[i]->width(), input_blobs[i]->height(),
-      input_blobs[i]->channels(), input_blobs[i]->num()};
-    mxArray* mx_blob =  mxCreateNumericArray(4, dims, mxSINGLE_CLASS, mxREAL);
+    mwSize dims[5] = {input_blobs[i]->width(), input_blobs[i]->height(),
+      output_blobs[i]->length(), input_blobs[i]->channels(), input_blobs[i]->num()};
+    mxArray* mx_blob =  mxCreateNumericArray(5, dims, mxSINGLE_CLASS, mxREAL);
     mxSetCell(mx_out, i, mx_blob);
     float* data_ptr = reinterpret_cast<float*>(mxGetPr(mx_blob));
+    const int count = input_blobs[i]->width() * input_blobs[i]->height() * output_blobs[i]->length() * input_blobs[i]->channels() * input_blobs[i]->num();
+    CHECK_EQ(count, input_blobs[i]->count());
     switch (Caffe::mode()) {
     case Caffe::CPU:
       memcpy(data_ptr, input_blobs[i]->cpu_diff(),
@@ -185,7 +189,7 @@ static mxArray* do_get_weights() {
       mxArray* mx_layer_cells = NULL;
       if (layer_names[i] != prev_layer_name) {
         prev_layer_name = layer_names[i];
-        const mwSize dims[2] = {layer_blobs.size(), 1};
+        const mwSize dims[2] = {(int)layer_blobs.size(), 1};
         mx_layer_cells = mxCreateCellArray(2, dims);
         mxSetField(mx_layers, mx_layer_index, "weights", mx_layer_cells);
         mxSetField(mx_layers, mx_layer_index, "layer_names",
@@ -196,11 +200,13 @@ static mxArray* do_get_weights() {
       for (unsigned int j = 0; j < layer_blobs.size(); ++j) {
         // internally data is stored as (width, height, channels, num)
         // where width is the fastest dimension
-        mwSize dims[4] = {layer_blobs[j]->width(), layer_blobs[j]->height(),
-            layer_blobs[j]->channels(), layer_blobs[j]->num()};
+        mwSize dims[5] = {layer_blobs[j]->width(), layer_blobs[j]->height(),
+            layer_blobs[j]->length(), layer_blobs[j]->channels(), layer_blobs[j]->num()};
 
+        const int count = layer_blobs[i]->width() * layer_blobs[i]->height() * layer_blobs[i]->length() * layer_blobs[i]->channels() * layer_blobs[i]->num();
+        CHECK_EQ(count, layer_blobs[i]->count());
         mxArray* mx_weights =
-          mxCreateNumericArray(4, dims, mxSINGLE_CLASS, mxREAL);
+          mxCreateNumericArray(5, dims, mxSINGLE_CLASS, mxREAL);
         mxSetCell(mx_layer_cells, j, mx_weights);
         float* weights_ptr = reinterpret_cast<float*>(mxGetPr(mx_weights));
 
@@ -313,6 +319,71 @@ static void is_initialized(MEX_ARGS) {
   }
 }
 
+static void get_meanfile(MEX_ARGS) {
+  if (nrhs != 1) {
+    LOG(ERROR) << "Only given " << nrhs << " arguments";
+    mexErrMsgTxt("Wrong number of arguments");
+  }
+  char* meanfile = mxArrayToString(prhs[0]);
+  BlobProto blob_proto;
+  ReadProtoFromBinaryFileOrDie(meanfile, &blob_proto);
+  Blob<float> data_mean_;
+  data_mean_.FromProto(blob_proto);
+  CHECK_EQ(data_mean_.num(), 1);
+  CHECK_EQ(data_mean_.channels(), 3);
+  mwSize dims[5] = {data_mean_.width(), data_mean_.height(), data_mean_.length(),
+            data_mean_.channels(), data_mean_.num()};
+
+  mxArray* mx_mean =
+          mxCreateNumericArray(5, dims, mxSINGLE_CLASS, mxREAL);
+  float* weights_ptr = reinterpret_cast<float*>(mxGetPr(mx_mean));
+
+  switch (Caffe::mode()) {
+    case Caffe::CPU:
+      memcpy(weights_ptr, data_mean_.cpu_data(),
+              sizeof(float) * data_mean_.count());
+      break;
+    case Caffe::GPU:
+      CUDA_CHECK(cudaMemcpy(weights_ptr, data_mean_.gpu_data(),
+              sizeof(float) * data_mean_.count(), cudaMemcpyDeviceToHost));
+      break;
+    default:
+      LOG(FATAL) << "Unknown caffe mode: " << Caffe::mode();
+  }
+  plhs[0] = mx_mean;
+}
+
+static void get_features(MEX_ARGS) {
+  if (nrhs != 1) {
+    LOG(ERROR) << "Only given " << nrhs << " arguments";
+    mexErrMsgTxt("Wrong number of arguments");
+  }
+  char* blob_name = mxArrayToString(prhs[0]);
+  CHECK(net_->has_blob(string(blob_name)))
+      << "Unknown feature blob name " << string(blob_name);
+  const shared_ptr<Blob<float> > feature_blob = net_
+        ->blob_by_name(string(blob_name));
+  mwSize dims[5] = {feature_blob->width(), feature_blob->height(), feature_blob->length(),
+      feature_blob->channels(), feature_blob->num()};
+  mxArray* mx_blob =  mxCreateNumericArray(5, dims, mxSINGLE_CLASS, mxREAL);
+
+  float* data_ptr = reinterpret_cast<float*>(mxGetPr(mx_blob));
+  switch (Caffe::mode()) {
+    case Caffe::CPU:
+      memcpy(data_ptr, feature_blob->cpu_data(),
+          sizeof(float) * feature_blob->count());
+      break;
+    case Caffe::GPU:
+      cudaMemcpy(data_ptr, feature_blob->gpu_data(),
+          sizeof(float) * feature_blob->count(), cudaMemcpyDeviceToHost);
+      break;
+    default:
+      LOG(FATAL) << "Unknown Caffe mode.";
+  }  // switch (Caffe::mode())
+  
+  plhs[0] = mx_blob;
+}
+
 /** -----------------------------------------------------------------
  ** Available commands.
  **/
@@ -334,11 +405,12 @@ static handler_registry handlers[] = {
   { "set_device",         set_device      },
   { "get_weights",        get_weights     },
   { "get_init_key",       get_init_key    },
+  { "get_meanfile",       get_meanfile    },
+  { "get_features",       get_features    },
   { "reset",              reset           },
   // The end.
   { "END",                NULL            },
 };
-
 
 /** -----------------------------------------------------------------
  ** matlab entry point: caffe(api_command, arg1, arg2, ...)

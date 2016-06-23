@@ -270,9 +270,10 @@ $(MAT$(PROJECT)_SO): $(MAT$(PROJECT)_SRC) $(STATIC_NAME)
 			"to build mat$(PROJECT)."; \
 		exit 1; \
 	fi
+	@ echo MEX $<
 	$(MATLAB_DIR)/bin/mex $(MAT$(PROJECT)_SRC) $(STATIC_NAME) \
 			CXXFLAGS="\$$CXXFLAGS $(CXXFLAGS) $(WARNINGS)" \
-			CXXLIBS="\$$CXXLIBS $(LDFLAGS)" -o $@
+			CXXLIBS="\$$CXXLIBS $(LDFLAGS)" -output $@
 	@ echo
 
 runtest: $(TEST_ALL_BIN)

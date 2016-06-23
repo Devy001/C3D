@@ -122,14 +122,14 @@ class Blob {
   void ShareDiff(const Blob& other);
 
  protected:
-  shared_ptr<SyncedMemory> data_;
-  shared_ptr<SyncedMemory> diff_;
   int num_;
   int channels_;
   int length_;
   int height_;
   int width_;
   int count_;
+  shared_ptr<SyncedMemory> data_;
+  shared_ptr<SyncedMemory> diff_;
 
   DISABLE_COPY_AND_ASSIGN(Blob);
 };  // class Blob
